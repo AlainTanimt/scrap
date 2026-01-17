@@ -52,44 +52,43 @@ async def scrape_leboncoin():
         await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
         await asyncio.sleep(random.randint(1, 3))
         
-        # Sélection des cartes d'annonces
-        ad_cards = await page.query_selector_all('article[data-test-id="ad"]')
+        # Extraction robuste en une seule fois dans le navigateur
+        ads_data = await page.evaluate("""
+            () => {
+                const results = [];
+                const cards = document.querySelectorAll('article[data-test-id="ad"]');
+                
+                cards.forEach(card => {
+                    try {
+                        const titleEl = card.querySelector('[data-test-id="adcard-title"]');
+                        const priceEl = card.querySelector('[data-test-id="price"]');
+                        const locationEl = card.querySelector('[data-test-id="ad-location-light"]');
+                        const paramsEl = card.querySelector('[data-test-id="ad-params-light"]');
+                        const linkEl = card.querySelector('a');
+                        
+                        const locationText = locationEl ? locationEl.innerText : "N/A";
+                        const locationParts = locationText.split('\\n');
+                        
+                        results.push({
+                            title: titleEl ? titleEl.innerText : "N/A",
+                            price: priceEl ? priceEl.innerText : "N/A",
+                            location: locationParts[0] || "N/A",
+                            date: locationParts[1] || "N/A",
+                            url: linkEl ? "https://www.leboncoin.fr" + linkEl.getAttribute('href') : "N/A",
+                            params: paramsEl ? paramsEl.innerText : "N/A"
+                        });
+                    } catch (e) {}
+                });
+                return results;
+            }
+        """)
         
-        print(f"Nombre d'annonces trouvées : {len(ad_cards)}")
-        
-        for card in ad_cards:
-            try:
-                title_el = await card.query_selector('[data-testid="adcard-title"]')
-                price_el = await card.query_selector('[data-testid="price"]')
-                location_el = await card.query_selector('[data-testid="adcard-location"]')
-                link_el = await card.query_selector('a')
-                
-                title = await title_el.inner_text() if title_el else "N/A"
-                price = await price_el.inner_text() if price_el else "N/A"
-                location_text = await location_el.inner_text() if location_el else "N/A"
-                
-                raw_href = await link_el.get_attribute("href") if link_el else None
-                link = "https://www.leboncoin.fr" + raw_href if raw_href else "N/A"
-                
-                location_parts = location_text.split('\n')
-                city_cp = location_parts[0] if len(location_parts) > 0 else "N/A"
-                date_published = location_parts[1] if len(location_parts) > 1 else "N/A"
-                
-                ads_data.append({
-                    "title": title,
-                    "price": price,
-                    "location": city_cp,
-                    "date": date_published,
-                    "url": link
-                })
-                
-            except Exception as e:
-                print(f"Erreur sur une annonce : {e}")
+        print(f"Nombre d'annonces extraites : {len(ads_data)}")
         
         await browser.close()
         
     if ads_data:
-        with open("ads.json", "w", encoding="utf-8") as f:
+        with open("ads2.json", "w", encoding="utf-8") as f:
             json.dump(ads_data, f, ensure_ascii=False, indent=4)
         print(f"Succès : {len(ads_data)} annonces sauvegardées dans ads.json")
     else:
