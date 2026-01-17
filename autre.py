@@ -10,6 +10,7 @@ result = client.search(
     sort=lbc.Sort.NEWEST,
     ad_type=lbc.AdType.OFFER,
     category=lbc.Category.VEHICULES,
+    owner_type=lbc.OwnerType.PRO,
 )
 
 # Sélection des champs spécifiques et conversion en liste de dictionnaires
@@ -29,7 +30,7 @@ ads_list = [{
 } for ad in result.ads]
 
 # Sauvegarde dans le fichier JSON
-with open("ads_lbc.json", "w", encoding="utf-8") as f:
+with open("polo_pro.json", "w", encoding="utf-8") as f:
     json.dump(ads_list, f, ensure_ascii=False, indent=4)
 
 print(f"Sauvegardé {len(ads_list)} annonces dans ads_lbc.json")
